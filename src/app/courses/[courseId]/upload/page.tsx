@@ -120,7 +120,7 @@ export default function CourseUploadPage() {
             onChange={event => setPastedText(event.target.value)}
           />
           <p className="text-xs text-slate-500">
-            In a full version, you&apos;d upload PDFs here. For the hackathon
+            In a full version, you'd upload PDFs here. For the hackathon
             demo this keeps things simple and reliable.
           </p>
         </div>

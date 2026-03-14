@@ -89,7 +89,7 @@ export default function DashboardPage() {
             Your courses
           </h1>
           <p className="mt-1 text-sm text-slate-300">
-            See where you&apos;re behind and jump into a tiny catch-up
+            See where you're behind and jump into a tiny catch-up
             session.
           </p>
         </div>

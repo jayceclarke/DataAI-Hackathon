@@ -57,7 +57,7 @@ export default function UploadPage() {
           Turn class notes into micro-lessons
         </h1>
         <p className="mt-1 text-sm text-slate-300">
-          Start with one lecture: paste the slides or notes. We&apos;ll turn it
+          Start with one lecture: paste the slides or notes. We'll turn it
           into a short daily session.
         </p>
       </div>
@@ -102,7 +102,7 @@ export default function UploadPage() {
             onChange={event => setRawText(event.target.value)}
           />
           <p className="text-xs text-slate-500">
-            We&apos;ll extract key concepts and create a handful of 2–5 minute
+            We'll extract key concepts and create a handful of 2–5 minute
             lessons.
           </p>
         </div>
