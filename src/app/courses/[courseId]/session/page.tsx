@@ -170,7 +170,7 @@ export default function CourseSessionPage() {
     if (!state.data) return;
 
     try {
-      await fetch("/api/session/complete", {
+      await fetch("/api/session/finalize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

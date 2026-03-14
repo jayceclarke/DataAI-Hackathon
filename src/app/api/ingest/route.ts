@@ -23,15 +23,14 @@ export async function POST(request: Request) {
       const { data: course, error: courseError } = await supabase
         .from("courses")
         .insert({
-          title: parsed.courseTitle ?? parsed.materialTitle,
-          description: parsed.courseTitle
-            ? `Auto-created course for ${parsed.courseTitle}`
-            : null
+          title: parsed.courseTitle ?? parsed.materialTitle
         })
         .select("id")
         .single();
 
       if (courseError || !course) {
+        // eslint-disable-next-line no-console
+        console.error("Failed to insert course", courseError);
         return NextResponse.json(
           { error: "Failed to create course" },
           { status: 500 }
