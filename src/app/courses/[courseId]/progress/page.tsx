@@ -12,6 +12,13 @@ type ConceptItem = {
   estimated_minutes: number;
   order_index: number;
   completed: boolean;
+  source_document_id?: string | null;
+};
+
+type Section = {
+  label: string;
+  source_document_id: string | null;
+  concepts: ConceptItem[];
 };
 
 type ProgressData = {
@@ -25,6 +32,7 @@ type ProgressData = {
   last_activity_date: string | null;
   quiz_accuracy: number;
   concepts: ConceptItem[];
+  sections?: Section[];
 };
 
 export default function CourseProgressPage() {
@@ -35,6 +43,7 @@ export default function CourseProgressPage() {
   const [data, setData] = useState<ProgressData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
   const loadProgress = useCallback(() => {
     if (!courseId) return;
@@ -107,14 +116,6 @@ export default function CourseProgressPage() {
             >
               ← Back to dashboard
             </button>
-            <button
-              type="button"
-              onClick={() => loadProgress()}
-              disabled={loading}
-              className="rounded-lg border border-slate-700 bg-slate-900/80 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800/80 disabled:opacity-50"
-            >
-              Refresh
-            </button>
           </div>
           <h1 className="mt-2 text-2xl font-semibold text-slate-50">
             {data.title}
@@ -126,12 +127,20 @@ export default function CourseProgressPage() {
             Progress and concepts — study any concept or run a mixed session.
           </p>
         </div>
-        <Link
-          href={`/courses/${courseId}/session`}
-          className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-slate-950 shadow-lg shadow-brand-500/40 hover:bg-brand-400"
-        >
-          Start today&apos;s session
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={`/courses/${courseId}/session`}
+            className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-slate-950 shadow-lg shadow-brand-500/40 hover:bg-brand-400"
+          >
+            Start today&apos;s session
+          </Link>
+          <Link
+            href={`/courses/${courseId}/upload?supplement=1`}
+            className="rounded-lg border border-slate-600 bg-slate-800/80 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-700/80"
+          >
+            Add material
+          </Link>
+        </div>
       </div>
 
       <div className="space-y-4 rounded-2xl bg-slate-950/70 p-4 ring-1 ring-slate-800/80">
@@ -186,6 +195,91 @@ export default function CourseProgressPage() {
             No concepts yet. Upload material and generate lessons for this
             course.
           </div>
+        ) : (data.sections && data.sections.length > 0 ? (
+          <div className="space-y-2">
+            {data.sections.map((section, idx) => {
+              const sectionKey = section.source_document_id ?? `section-${idx}`;
+              const isExpanded = expandedSections.has(sectionKey);
+              const completedCount = section.concepts.filter(c => c.completed).length;
+              return (
+                <div
+                  key={sectionKey}
+                  className="rounded-2xl bg-slate-950/70 ring-1 ring-slate-800/80 overflow-hidden"
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExpandedSections(prev => {
+                        const next = new Set(prev);
+                        if (next.has(sectionKey)) next.delete(sectionKey);
+                        else next.add(sectionKey);
+                        return next;
+                      });
+                    }}
+                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-800/50 transition-colors"
+                  >
+                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-300">
+                      {section.label}
+                    </span>
+                    <span className="flex items-center gap-2 text-xs text-slate-400">
+                      <span>
+                        {completedCount}/{section.concepts.length} done
+                      </span>
+                      <svg
+                        className={`h-4 w-4 shrink-0 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </span>
+                  </button>
+                  {isExpanded && (
+                    <div className="border-t border-slate-800/80 space-y-3 px-4 pb-4 pt-3">
+                      {section.concepts.map(concept => (
+                        <div
+                          key={concept.id}
+                          className="flex flex-col gap-3 rounded-xl bg-slate-900/70 p-4 ring-1 ring-slate-800/80 sm:flex-row sm:items-start sm:justify-between"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-sm font-semibold text-slate-50">
+                                {concept.title}
+                              </h3>
+                              <span
+                                className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                  concept.completed
+                                    ? "bg-emerald-500/20 text-emerald-400"
+                                    : "bg-slate-700/80 text-slate-400"
+                                }`}
+                              >
+                                {concept.completed ? "Done" : "Not done"}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-xs text-slate-300">
+                              {concept.summary}
+                            </p>
+                            <p className="mt-1 text-[11px] text-slate-500">
+                              {concept.estimated_minutes} min ·{" "}
+                              <span className="capitalize">{concept.difficulty}</span>
+                            </p>
+                          </div>
+                          <Link
+                            href={`/courses/${courseId}/session?conceptId=${concept.id}`}
+                            className="shrink-0 self-start rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-100 ring-1 ring-slate-700/80 hover:bg-slate-700/80"
+                          >
+                            Study this concept
+                          </Link>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         ) : (
           <div className="space-y-3">
             {data.concepts.map(concept => (
@@ -225,7 +319,7 @@ export default function CourseProgressPage() {
               </div>
             ))}
           </div>
-        )}
+        ))}
       </div>
     </div>
   );

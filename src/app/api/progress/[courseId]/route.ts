@@ -49,9 +49,15 @@ export async function GET(
 
     const { data: conceptsRows } = await supabase
       .from("concepts")
-      .select("id, title, summary, difficulty, estimated_minutes, order_index")
+      .select("id, title, summary, difficulty, estimated_minutes, order_index, source_document_id")
       .eq("course_id", parsed.data.courseId)
       .order("order_index", { ascending: true });
+
+    const { data: sourceDocs } = await supabase
+      .from("source_documents")
+      .select("id, filename, created_at")
+      .eq("course_id", parsed.data.courseId)
+      .order("created_at", { ascending: true });
 
     const { data: lessonsRows } = await supabase
       .from("lessons")
@@ -83,7 +89,7 @@ export async function GET(
       lessonByConceptId.set(l.concept_id as string, l.id as string);
     });
 
-    const concepts = (conceptsRows ?? []).map(c => {
+    const conceptList = (conceptsRows ?? []).map(c => {
       const lessonId = lessonByConceptId.get(c.id as string) ?? "";
       return {
         id: c.id,
@@ -92,9 +98,43 @@ export async function GET(
         difficulty: c.difficulty,
         estimated_minutes: c.estimated_minutes,
         order_index: c.order_index,
+        source_document_id: c.source_document_id as string | null,
         completed: completedLessonIds.has(lessonId)
       };
     });
+
+    type ConceptItem = typeof conceptList[0];
+    type Section = { label: string; source_document_id: string | null; concepts: ConceptItem[] };
+
+    const conceptsByDoc = new Map<string | null, ConceptItem[]>();
+    for (const c of conceptList) {
+      const key = c.source_document_id ?? null;
+      if (!conceptsByDoc.has(key)) conceptsByDoc.set(key, []);
+      conceptsByDoc.get(key)!.push(c);
+    }
+
+    const sections: Section[] = [];
+    const nullConcepts = conceptsByDoc.get(null) ?? [];
+    if (nullConcepts.length > 0) {
+      sections.push({
+        label: "Initial material",
+        source_document_id: null,
+        concepts: nullConcepts
+      });
+    }
+    for (const doc of sourceDocs ?? []) {
+      const id = doc.id as string;
+      const list = conceptsByDoc.get(id) ?? [];
+      if (list.length > 0) {
+        sections.push({
+          label: (doc.filename as string) || "Material",
+          source_document_id: id,
+          concepts: list
+        });
+      }
+    }
+
+    const concepts = conceptList;
 
     const { conceptsCompleted, totalConcepts, totalXp } =
       await recomputeCourseProgress(parsed.data.courseId);
@@ -124,7 +164,8 @@ export async function GET(
         current_streak: progress?.current_streak ?? 0,
         last_activity_date: progress?.last_activity_date ?? null,
         quiz_accuracy: quizAccuracy,
-        concepts
+        concepts,
+        sections
       },
       {
         headers: {

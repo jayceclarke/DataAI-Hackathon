@@ -1,12 +1,15 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 
 export default function CourseUploadPage() {
   const params = useParams<{ courseId: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const courseId = params.courseId;
+  const isSupplement = searchParams.get("supplement") === "1";
 
   const [pastedText, setPastedText] = useState("");
   const [filename, setFilename] = useState("Lecture notes");
@@ -47,7 +50,8 @@ export default function CourseUploadPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          course_id: courseId
+          course_id: courseId,
+          source_document_id: uploadData.source_document_id
         })
       });
 
@@ -71,12 +75,21 @@ export default function CourseUploadPage() {
   return (
     <div className="mx-auto flex max-w-2xl flex-1 flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-50">
-          Upload materials
+        {isSupplement && (
+          <Link
+            href={`/courses/${courseId}/progress`}
+            className="text-xs font-medium text-slate-400 hover:text-slate-200"
+          >
+            ← Back to progress
+          </Link>
+        )}
+        <h1 className="mt-1 text-2xl font-semibold text-slate-50">
+          {isSupplement ? "Add supplemental material" : "Upload materials"}
         </h1>
         <p className="mt-1 text-sm text-slate-300">
-          For the MVP, paste one lecture&apos;s notes or slides text. We&apos;ll
-          turn it into concepts and micro-lessons.
+          {isSupplement
+            ? "Paste more lecture notes or slides. New concepts will be added to this course."
+            : "For the MVP, paste one lecture's notes or slides text. We'll turn it into concepts and micro-lessons."}
         </p>
       </div>
 
@@ -122,7 +135,11 @@ export default function CourseUploadPage() {
             disabled={loading}
             className="inline-flex items-center justify-center rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-brand-500/40 transition hover:bg-brand-400 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? "Generating lessons…" : "Generate lessons"}
+            {loading
+              ? "Generating lessons…"
+              : isSupplement
+                ? "Add concepts from this material"
+                : "Generate lessons"}
           </button>
         </div>
       </form>

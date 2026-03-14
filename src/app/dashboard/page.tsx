@@ -37,7 +37,7 @@ export default function DashboardPage() {
       });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
-        setFetchError(json?.error ?? "Couldn't load courses. Click Refresh to try again.");
+        setFetchError(json?.error ?? "Couldn't load courses.");
         setLoading(false);
         loadingRef.current = false;
         return;
@@ -49,7 +49,7 @@ export default function DashboardPage() {
       }
     } catch {
       if (thisLoadId === loadIdRef.current) {
-        setFetchError("Couldn't load courses. Click Refresh to try again.");
+        setFetchError("Couldn't load courses.");
       }
     } finally {
       if (thisLoadId === loadIdRef.current) {
@@ -94,14 +94,6 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => loadCourses(true)}
-            disabled={loading}
-            className="rounded-lg border border-slate-700 bg-slate-900/80 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800/80 disabled:opacity-50"
-          >
-            Refresh
-          </button>
           <Link
             href="/courses/new"
             className="inline-flex items-center justify-center rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-slate-950 shadow-lg shadow-brand-500/40 hover:bg-brand-400"
