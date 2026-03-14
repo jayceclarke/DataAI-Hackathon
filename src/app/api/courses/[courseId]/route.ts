@@ -6,6 +6,55 @@ const ParamsSchema = z.object({
   courseId: z.string().uuid()
 });
 
+const PatchBodySchema = z.object({
+  is_public: z.boolean()
+});
+
+export async function PATCH(
+  request: Request,
+  context: { params: { courseId: string } }
+) {
+  const auth = await getAuthUserAndSupabase();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const { user, supabase } = auth;
+
+  const parsed = ParamsSchema.safeParse(context.params);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid course id" }, { status: 400 });
+  }
+
+  const body = await request.json().catch(() => ({}));
+  const bodyParsed = PatchBodySchema.safeParse(body);
+  if (!bodyParsed.success) {
+    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+  }
+
+  const { data: course } = await supabase
+    .from("courses")
+    .select("id")
+    .eq("id", parsed.data.courseId)
+    .eq("user_id", user.id)
+    .single();
+  if (!course) {
+    return NextResponse.json({ error: "Course not found" }, { status: 404 });
+  }
+
+  const { error } = await supabase
+    .from("courses")
+    .update({ is_public: bodyParsed.data.is_public })
+    .eq("id", parsed.data.courseId);
+
+  if (error) {
+    return NextResponse.json(
+      { error: "Failed to update course" },
+      { status: 500 }
+    );
+  }
+  return NextResponse.json({ ok: true, is_public: bodyParsed.data.is_public });
+}
+
 export async function DELETE(
   _request: Request,
   context: { params: { courseId: string } }

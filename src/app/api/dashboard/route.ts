@@ -16,7 +16,7 @@ export async function GET() {
   try {
     const { data: courses, error: coursesError } = await supabase
       .from("courses")
-      .select("id, title, course_code")
+      .select("id, title, course_code, is_public")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false, nullsFirst: false })
       .limit(500);
@@ -47,7 +47,7 @@ export async function GET() {
 
     const result = await Promise.all(
       courseList.map(
-        async (c: { id: string; title: string; course_code: string | null }) => {
+        async (c: { id: string; title: string; course_code: string | null; is_public?: boolean }) => {
           let conceptsCompleted = 0;
           let totalConcepts = 0;
           let totalXp = 0;
@@ -72,7 +72,8 @@ export async function GET() {
             total: totalConcepts,
             percent,
             xp: totalXp,
-            streak: streakByCourse.get(c.id) ?? 0
+            streak: streakByCourse.get(c.id) ?? 0,
+            isPublic: c.is_public ?? false
           };
         }
       )

@@ -24,6 +24,7 @@ type Section = {
 type ProgressData = {
   title: string;
   course_code: string | null;
+  is_public?: boolean;
   concepts_completed: number;
   total_concepts: number;
   percent_caught_up: number;
@@ -44,14 +45,21 @@ export default function CourseProgressPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [togglingPublic, setTogglingPublic] = useState(false);
+
+  const PROGRESS_FETCH_TIMEOUT_MS = 45000;
 
   const loadProgress = useCallback(() => {
     if (!courseId) return;
     setLoading(true);
     setError(null);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), PROGRESS_FETCH_TIMEOUT_MS);
+
     fetch(`/api/progress/${courseId}?t=${Date.now()}`, {
       cache: "no-store",
-      headers: { Pragma: "no-cache" }
+      headers: { Pragma: "no-cache" },
+      signal: controller.signal
     })
       .then(res => {
         if (!res.ok) throw new Error("Failed to load progress");
@@ -64,10 +72,15 @@ export default function CourseProgressPage() {
           setExpandedSections(new Set([firstKey]));
         }
       })
-      .catch(() => {
-        setError("Couldn't load progress for this course.");
+      .catch(err => {
+        if (err.name === "AbortError") {
+          setError("This is taking longer than usual. Check your connection or try again.");
+        } else {
+          setError("Couldn't load progress for this course.");
+        }
       })
       .finally(() => {
+        clearTimeout(timeoutId);
         setLoading(false);
       });
   }, [courseId]);
@@ -94,36 +107,86 @@ export default function CourseProgressPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-1 items-center justify-center">
-        <p className="text-sm text-slate-300">Loading progress…</p>
+      <div className="flex flex-1 flex-col items-center justify-center gap-5">
+        <div
+          className="h-10 w-10 animate-spin rounded-full border-2 border-slate-600 border-t-brand-500"
+          aria-hidden
+        />
+        <p className="text-sm text-slate-400">Loading progress...</p>
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="flex flex-1 items-center justify-center">
-        <p className="text-sm text-rose-400">{error ?? "Couldn't load progress."}</p>
+      <div className="flex flex-1 flex-col items-center justify-center gap-4">
+        <p className="text-center text-sm text-rose-400">{error ?? "Couldn't load progress."}</p>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={() => loadProgress()}
+            className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-slate-950 hover:bg-brand-400"
+          >
+            Retry
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push("/dashboard")}
+            className="rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800/80"
+          >
+            Back to dashboard
+          </button>
+        </div>
       </div>
     );
   }
+
+  const handleTogglePublic = async () => {
+    if (togglingPublic || !data) return;
+    const next = !data.is_public;
+    setTogglingPublic(true);
+    try {
+      const res = await fetch(`/api/courses/${courseId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_public: next })
+      });
+      if (res.ok) setData(prev => prev ? { ...prev, is_public: next } : prev);
+    } finally {
+      setTogglingPublic(false);
+    }
+  };
 
   return (
     <div className="mx-auto flex max-w-3xl flex-1 flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => router.push("/dashboard")}
               className="rounded-lg border border-slate-700 bg-slate-900/80 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800/80"
             >
-              ← Back to dashboard
+              Back to dashboard
             </button>
           </div>
-          <h1 className="mt-2 text-2xl font-semibold text-slate-50">
-            {data.title}
-          </h1>
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-semibold text-slate-50">
+              {data.title}
+            </h1>
+            <label className="flex cursor-pointer items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50">
+              <input
+                type="checkbox"
+                checked={!!data.is_public}
+                onChange={handleTogglePublic}
+                disabled={togglingPublic}
+                className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-brand-500 focus:ring-brand-500/50"
+              />
+              <span className="text-sm text-slate-400">
+                {togglingPublic ? "…" : data.is_public ? "Public" : "Share publicly"}
+              </span>
+            </label>
+          </div>
           {data.course_code && (
             <p className="text-xs text-slate-400">{data.course_code}</p>
           )}

@@ -95,6 +95,12 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center gap-2">
           <Link
+            href="/discover"
+            className="inline-flex items-center justify-center rounded-lg border border-slate-600 bg-slate-800/80 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-700/80"
+          >
+            Discover
+          </Link>
+          <Link
             href="/courses/new"
             className="inline-flex items-center justify-center rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-slate-950 shadow-lg shadow-brand-500/40 hover:bg-brand-400"
           >

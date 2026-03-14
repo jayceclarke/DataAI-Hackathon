@@ -6,7 +6,7 @@ const supabaseAnonKey =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!;
 
-const PROTECTED_PREFIXES = ["/dashboard", "/courses"];
+const PROTECTED_PREFIXES = ["/dashboard", "/courses", "/discover"];
 const AUTH_ROUTES = ["/login", "/signup"];
 
 function isProtected(pathname: string) {

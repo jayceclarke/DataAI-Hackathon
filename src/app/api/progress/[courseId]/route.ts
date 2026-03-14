@@ -29,7 +29,7 @@ export async function GET(
   try {
     const { data: course, error: courseError } = await supabase
       .from("courses")
-      .select("title, course_code")
+      .select("title, course_code, is_public")
       .eq("id", parsed.data.courseId)
       .eq("user_id", user.id)
       .single();
@@ -138,9 +138,18 @@ export async function GET(
     }
 
     const concepts = conceptList;
+    const totalConcepts = conceptList.length;
 
-    const { conceptsCompleted, totalConcepts, totalXp } =
-      await recomputeCourseProgress(parsed.data.courseId, user.id);
+    let conceptsCompleted: number;
+    let totalXp: number;
+    if (sessionIds.length === 0) {
+      conceptsCompleted = 0;
+      totalXp = progress?.total_xp ?? 0;
+    } else {
+      const computed = await recomputeCourseProgress(parsed.data.courseId, user.id);
+      conceptsCompleted = computed.conceptsCompleted;
+      totalXp = computed.totalXp;
+    }
     const percentCaughtUp =
       totalConcepts > 0
         ? Math.round((conceptsCompleted / totalConcepts) * 100)
@@ -160,6 +169,7 @@ export async function GET(
       {
         title: course.title,
         course_code: course.course_code,
+        is_public: course.is_public ?? false,
         concepts_completed: conceptsCompleted,
         total_concepts: totalConcepts,
         percent_caught_up: percentCaughtUp,
