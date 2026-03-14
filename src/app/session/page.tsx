@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type Lesson = {
   id: string;
@@ -29,6 +29,7 @@ type TodaySessionResponse = {
 export default function SessionPage() {
   const searchParams = useSearchParams();
   const courseId = searchParams.get("courseId");
+  const router = useRouter();
 
   const [state, setState] = useState<{
     loading: boolean;
@@ -118,6 +119,10 @@ export default function SessionPage() {
     setSelectedIndex(null);
     setResult({ isCorrect: null, xpEarned: 0 });
     setActiveIndex(prev => prev + 1);
+  };
+
+  const handleExit = () => {
+    router.push("/");
   };
 
   if (!courseId) {
@@ -245,7 +250,7 @@ export default function SessionPage() {
           </div>
         )}
 
-        <div className="mt-3 flex items-center justify-between">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
           <button
             type="button"
             onClick={handleSubmitAnswer}
@@ -255,15 +260,24 @@ export default function SessionPage() {
             Check answer
           </button>
 
-          {activeIndex < state.lessons.length - 1 && (
+          {result.isCorrect &&
+            activeIndex < state.lessons.length - 1 && (
             <button
               type="button"
               onClick={handleNext}
               className="text-xs font-medium text-brand-200 hover:text-brand-100"
             >
-              Next concept →
+              New question
             </button>
           )}
+
+          <button
+            type="button"
+            onClick={handleExit}
+            className="text-xs font-medium text-slate-300 hover:text-slate-100"
+          >
+            Exit
+          </button>
         </div>
       </div>
     </div>

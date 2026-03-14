@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 type SessionLesson = {
   id: string;
@@ -34,6 +34,7 @@ type TodaySessionResponse = {
 export default function CourseSessionPage() {
   const params = useParams<{ courseId: string }>();
   const courseId = params.courseId;
+  const router = useRouter();
 
   const [state, setState] = useState<{
     loading: boolean;
@@ -181,6 +182,10 @@ export default function CourseSessionPage() {
       // eslint-disable-next-line no-console
       console.error(error);
     }
+  };
+
+  const handleExit = () => {
+    router.push(`/courses/${courseId}/concepts`);
   };
 
   if (state.loading) {
@@ -357,7 +362,7 @@ export default function CourseSessionPage() {
           </div>
         )}
 
-        <div className="mt-3 flex items-center justify-between">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
           <button
             type="button"
             onClick={handleCheckAnswer}
@@ -367,14 +372,23 @@ export default function CourseSessionPage() {
             Check answer
           </button>
 
+          {result.correct &&
+            activeIndex < state.data.lessons.length - 1 && (
+              <button
+                type="button"
+                onClick={handleNext}
+                className="text-xs font-medium text-brand-200 hover:text-brand-100"
+              >
+                New question
+              </button>
+            )}
+
           <button
             type="button"
-            onClick={handleNext}
-            className="text-xs font-medium text-brand-200 hover:text-brand-100"
+            onClick={handleExit}
+            className="text-xs font-medium text-slate-300 hover:text-slate-100"
           >
-            {activeIndex < state.data.lessons.length - 1
-              ? "Next concept →"
-              : "Finish session"}
+            Exit
           </button>
         </div>
       </div>
