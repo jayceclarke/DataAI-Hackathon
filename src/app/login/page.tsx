@@ -8,7 +8,8 @@ import { createBrowserSupabase } from "@/lib/supabase/browser";
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") ?? "/dashboard";
+  const nextParam = searchParams.get("next");
+  const next = nextParam && nextParam !== "/courses/new" ? nextParam : "/dashboard";
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,10 +30,9 @@ export default function LoginPage() {
           options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` }
         });
         if (error) throw error;
-        setMessage({
-          type: "success",
-          text: "Check your email for the confirmation link, then sign in."
-        });
+        router.push(next);
+        router.refresh();
+        return;
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;

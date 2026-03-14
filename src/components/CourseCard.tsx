@@ -94,14 +94,25 @@ export function CourseCard({
         </p>
       </div>
 
-      <div className="mt-3 flex items-center justify-between text-xs text-slate-300">
-        <div className="space-y-0.5">
-          <p>
-            <span className="font-semibold">{streak}</span> day streak
-          </p>
-          <p>
-            <span className="font-semibold">{xp}</span> XP
-          </p>
+      <div className="mt-3 flex items-center justify-between text-xs">
+        <div className="flex items-center gap-3">
+          <span
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold ${
+              streak > 0
+                ? "bg-amber-500/15 text-amber-400"
+                : "bg-slate-800/80 text-slate-400"
+            }`}
+          >
+            {streak > 0 && (
+              <span aria-hidden className="text-amber-400">
+                🔥
+              </span>
+            )}
+            {streak} day{streak !== 1 ? "s" : ""}
+          </span>
+          <span className="inline-flex items-center rounded-full bg-brand-500/15 px-2 py-0.5 font-semibold text-brand-300">
+            {xp} XP
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <Link

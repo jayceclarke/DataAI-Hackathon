@@ -109,8 +109,30 @@ export default function DashboardPage() {
         </div>
       )}
       {loading ? (
-        <div className="rounded-2xl bg-slate-950/70 p-4 text-sm text-slate-300 ring-1 ring-slate-800/80">
-          Loading your courses…
+        <div className="grid gap-4 md:grid-cols-2">
+          {[1, 2].map((i) => (
+            <div
+              key={i}
+              className="flex flex-col justify-between rounded-2xl bg-slate-950/70 p-4 ring-1 ring-slate-800/80 animate-pulse"
+            >
+              <div className="space-y-2">
+                <div className="h-4 w-3/4 rounded bg-slate-700/80" />
+                <div className="h-3 w-1/3 rounded bg-slate-800/80" />
+                <div className="mt-2 h-1.5 w-full rounded-full bg-slate-800" />
+                <div className="h-3 w-1/2 rounded bg-slate-800/80" />
+              </div>
+              <div className="mt-3 flex items-center justify-between">
+                <div className="flex gap-2">
+                  <div className="h-6 w-16 rounded-full bg-slate-800" />
+                  <div className="h-6 w-12 rounded-full bg-slate-800" />
+                </div>
+                <div className="flex gap-2">
+                  <div className="h-8 w-16 rounded-lg bg-slate-800" />
+                  <div className="h-8 w-24 rounded-lg bg-slate-800" />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       ) : courses.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center rounded-2xl bg-slate-950/70 p-8 text-center ring-1 ring-slate-800/80">
@@ -135,8 +157,67 @@ export default function DashboardPage() {
           </Link>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {courses.map(course => (
+        <>
+          {(() => {
+            const incomplete = courses.filter(c => c.total > 0 && c.percent < 100);
+            const suggested = incomplete.length > 0
+              ? incomplete.sort((a, b) => a.percent - b.percent)[0]
+              : courses[0];
+            const isCaughtUp = incomplete.length === 0 && courses.some(c => c.total > 0);
+            return suggested ? (
+              <div className="rounded-2xl border border-brand-500/30 bg-brand-500/5 px-4 py-4 ring-1 ring-brand-500/20">
+                <p className="text-xs font-medium uppercase tracking-wide text-brand-300/90">
+                  {isCaughtUp ? "Stay sharp" : "Today's goal"}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-slate-100">
+                  {isCaughtUp
+                    ? `Review ${suggested.title}`
+                    : `Get closer in ${suggested.title}`}
+                </p>
+                {!isCaughtUp && suggested.total > 0 && (
+                  <p className="mt-0.5 text-xs text-slate-400">
+                    {suggested.completed}/{suggested.total} concepts · {100 - suggested.percent}% to go
+                  </p>
+                )}
+                <Link
+                  href={`/courses/${suggested.id}/session`}
+                  className="mt-3 inline-flex items-center justify-center rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-brand-500/40 hover:bg-brand-400"
+                >
+                  {isCaughtUp ? "Start review session" : "Continue"}
+                </Link>
+              </div>
+            ) : null;
+          })()}
+          <div className="flex flex-wrap items-center gap-4 rounded-2xl bg-slate-950/70 px-4 py-3 ring-1 ring-slate-800/80">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                Total XP
+              </span>
+              <span className="text-lg font-bold text-brand-300">
+                {courses.reduce((sum, c) => sum + c.xp, 0).toLocaleString()}
+              </span>
+            </div>
+            <div className="h-4 w-px bg-slate-700" />
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                Best streak
+              </span>
+              <span className="text-lg font-bold text-amber-400">
+                {Math.max(0, ...courses.map(c => c.streak))} days
+              </span>
+            </div>
+            <div className="h-4 w-px bg-slate-700" />
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                Caught up
+              </span>
+              <span className="text-lg font-bold text-emerald-400">
+                {courses.filter(c => c.total > 0 && c.percent === 100).length} / {courses.length}
+              </span>
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {courses.map(course => (
             <CourseCard
               key={course.id}
               id={course.id}
@@ -150,7 +231,8 @@ export default function DashboardPage() {
               onDeleted={handleDeleted}
             />
           ))}
-        </div>
+          </div>
+        </>
       )}
     </div>
   );

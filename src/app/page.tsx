@@ -1,6 +1,20 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { createBrowserSupabase } from "@/lib/supabase/browser";
 
 export default function LandingPage() {
+  const [user, setUser] = useState<{ id: string } | null | undefined>(undefined);
+
+  useEffect(() => {
+    createBrowserSupabase()
+      .auth.getUser()
+      .then(({ data: { user: u } }) => setUser(u ?? null));
+  }, []);
+
+  const isSignedIn = user !== undefined && user !== null;
+
   return (
     <div className="flex flex-1 flex-col justify-center gap-8">
       <section className="max-w-2xl space-y-4">
@@ -21,18 +35,29 @@ export default function LandingPage() {
           with quick questions so you can realistically get back on track.
         </p>
         <div className="flex flex-wrap gap-3">
-          <Link
-            href="/courses/new"
-            className="inline-flex items-center justify-center rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-brand-500/40 transition hover:bg-brand-400"
-          >
-            Start with a course
-          </Link>
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center justify-center rounded-lg bg-slate-900/70 px-4 py-2 text-sm font-semibold text-slate-100 ring-1 ring-slate-700/80 transition hover:bg-slate-800/80"
-          >
-            View my progress
-          </Link>
+          {isSignedIn ? (
+            <>
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center justify-center rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-brand-500/40 transition hover:bg-brand-400"
+              >
+                Go to dashboard
+              </Link>
+              <Link
+                href="/courses/new"
+                className="inline-flex items-center justify-center rounded-lg bg-slate-900/70 px-4 py-2 text-sm font-semibold text-slate-100 ring-1 ring-slate-700/80 transition hover:bg-slate-800/80"
+              >
+                New course
+              </Link>
+            </>
+          ) : (
+            <Link
+              href="/courses/new"
+              className="inline-flex items-center justify-center rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-brand-500/40 transition hover:bg-brand-400"
+            >
+              Start with a course
+            </Link>
+          )}
         </div>
       </section>
 

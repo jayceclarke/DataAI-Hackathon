@@ -59,6 +59,10 @@ export default function CourseProgressPage() {
       })
       .then((json: ProgressData) => {
         setData(json);
+        if (json.sections && json.sections.length > 0) {
+          const firstKey = json.sections[0].source_document_id ?? "section-0";
+          setExpandedSections(new Set([firstKey]));
+        }
       })
       .catch(() => {
         setError("Couldn't load progress for this course.");
