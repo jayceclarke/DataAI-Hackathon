@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getSupabaseServerClient } from "@/lib/supabaseClient";
+import { getAuthUserAndSupabase } from "@/lib/supabase/server";
 
 const ParamsSchema = z.object({
   courseId: z.string().uuid()
@@ -10,6 +10,12 @@ export async function GET(
   request: Request,
   context: { params: { courseId: string } }
 ) {
+  const auth = await getAuthUserAndSupabase();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const { user, supabase } = auth;
+
   const parsed = ParamsSchema.safeParse(context.params);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid course id" }, { status: 400 });
@@ -19,13 +25,11 @@ export async function GET(
   const conceptId = url.searchParams.get("conceptId");
 
   try {
-    const supabase = getSupabaseServerClient();
-    const userId = "demo-user";
-
     const { data: course, error: courseError } = await supabase
       .from("courses")
       .select("id, daily_goal_minutes")
       .eq("id", parsed.data.courseId)
+      .eq("user_id", user.id)
       .single();
 
     if (courseError || !course) {
@@ -120,7 +124,7 @@ export async function GET(
     const { data: session, error: sessionError } = await supabase
       .from("session_attempts")
       .insert({
-        user_id: userId,
+        user_id: user.id,
         course_id: parsed.data.courseId
       })
       .select("id")

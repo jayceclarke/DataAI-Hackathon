@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BackButton } from "./navigation";
+import { AuthHeader } from "@/components/AuthHeader";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,7 +23,7 @@ export default function RootLayout({
           <header className="mb-6 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <BackButton />
-              <Link href="/" className="flex items-center gap-2">
+              <Link href="/" className="flex items-center gap-2 shrink-0">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500 text-xl font-black text-slate-950 shadow-lg shadow-brand-500/40">
                   C
                 </div>
@@ -36,6 +37,7 @@ export default function RootLayout({
                 </div>
               </Link>
             </div>
+            <AuthHeader />
           </header>
           <main className="flex-1">{children}</main>
           <footer className="mt-6 text-center text-xs text-slate-500">

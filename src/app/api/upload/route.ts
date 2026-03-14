@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getSupabaseServerClient } from "@/lib/supabaseClient";
+import { getAuthUserAndSupabase } from "@/lib/supabase/server";
 
 const BodySchema = z.object({
   course_id: z.string().uuid(),
@@ -9,6 +9,12 @@ const BodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const auth = await getAuthUserAndSupabase();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const { user, supabase } = auth;
+
   try {
     const json = await request.json();
     const parsed = BodySchema.parse(json);
@@ -20,7 +26,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = getSupabaseServerClient();
+    const { data: course } = await supabase
+      .from("courses")
+      .select("id")
+      .eq("id", parsed.course_id)
+      .eq("user_id", user.id)
+      .single();
+    if (!course) {
+      return NextResponse.json({ error: "Course not found" }, { status: 404 });
+    }
 
     const { data, error } = await supabase
       .from("source_documents")

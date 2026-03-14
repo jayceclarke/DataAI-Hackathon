@@ -1,21 +1,23 @@
 import { unstable_noStore } from "next/cache";
 import { NextResponse } from "next/server";
-import { getSupabaseServerClient } from "@/lib/supabaseClient";
+import { getAuthUserAndSupabase } from "@/lib/supabase/server";
 import { recomputeCourseProgress } from "@/lib/progress";
-
-const USER_ID = "demo-user";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request) {
+export async function GET() {
   unstable_noStore();
-  request.headers.get("x-requested-with");
-  try {
-    const supabase = getSupabaseServerClient();
+  const auth = await getAuthUserAndSupabase();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const { user, supabase } = auth;
 
+  try {
     const { data: courses, error: coursesError } = await supabase
       .from("courses")
       .select("id, title, course_code")
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false, nullsFirst: false })
       .limit(500);
 
@@ -36,7 +38,7 @@ export async function GET(request: Request) {
     const { data: progressRows } = await supabase
       .from("user_course_progress")
       .select("course_id, current_streak")
-      .eq("user_id", USER_ID);
+      .eq("user_id", user.id);
 
     const streakByCourse = new Map<string, number>();
     (progressRows ?? []).forEach(p => {
@@ -50,7 +52,7 @@ export async function GET(request: Request) {
           let totalConcepts = 0;
           let totalXp = 0;
           try {
-            const progress = await recomputeCourseProgress(c.id);
+            const progress = await recomputeCourseProgress(c.id, user.id);
             conceptsCompleted = progress.conceptsCompleted;
             totalConcepts = progress.totalConcepts;
             totalXp = progress.totalXp;

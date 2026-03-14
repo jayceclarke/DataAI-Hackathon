@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getSupabaseServerClient } from "@/lib/supabaseClient";
+import { getAuthUserAndSupabase } from "@/lib/supabase/server";
 
 const BodySchema = z.object({
   session_attempt_id: z.string().uuid(),
@@ -9,6 +9,12 @@ const BodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const auth = await getAuthUserAndSupabase();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const { user, supabase } = auth;
+
   try {
     const json = await request.json();
     const parsed = BodySchema.safeParse(json);
@@ -17,7 +23,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid body" }, { status: 400 });
     }
 
-    const supabase = getSupabaseServerClient();
+    const { data: session, error: sessionError } = await supabase
+      .from("session_attempts")
+      .select("id, user_id")
+      .eq("id", parsed.data.session_attempt_id)
+      .single();
+    if (sessionError || !session || session.user_id !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const { data: quiz, error: quizError } = await supabase
       .from("quiz_questions")

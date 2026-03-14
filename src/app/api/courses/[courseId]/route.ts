@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getSupabaseServerClient } from "@/lib/supabaseClient";
+import { getAuthUserAndSupabase } from "@/lib/supabase/server";
 
 const ParamsSchema = z.object({
   courseId: z.string().uuid()
@@ -10,14 +10,30 @@ export async function DELETE(
   _request: Request,
   context: { params: { courseId: string } }
 ) {
+  const auth = await getAuthUserAndSupabase();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const { user, supabase } = auth;
+
   const parsed = ParamsSchema.safeParse(context.params);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid course id" }, { status: 400 });
   }
 
+  const courseId = parsed.data.courseId;
+
+  const { data: course } = await supabase
+    .from("courses")
+    .select("id")
+    .eq("id", courseId)
+    .eq("user_id", user.id)
+    .single();
+  if (!course) {
+    return NextResponse.json({ error: "Course not found" }, { status: 404 });
+  }
+
   try {
-    const supabase = getSupabaseServerClient();
-    const courseId = parsed.data.courseId;
 
     const fail = (message: string, err: unknown) => {
       // eslint-disable-next-line no-console

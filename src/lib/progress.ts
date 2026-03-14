@@ -1,14 +1,13 @@
 import { getSupabaseServerClient } from "@/lib/supabaseClient";
 
-const USER_ID = "demo-user";
-
 /**
  * Recompute concepts_completed and total_xp for a course from lesson_attempts.
  * Used so dashboard, progress page, and session/complete all stay in sync
  * and re-doing the same concept doesn't double-count.
  */
 export async function recomputeCourseProgress(
-  courseId: string
+  courseId: string,
+  userId: string
 ): Promise<{ conceptsCompleted: number; totalConcepts: number; totalXp: number }> {
   const supabase = getSupabaseServerClient();
 
@@ -25,7 +24,7 @@ export async function recomputeCourseProgress(
   const { data: sessionRows } = await supabase
     .from("session_attempts")
     .select("id")
-    .eq("user_id", USER_ID)
+    .eq("user_id", userId)
     .eq("course_id", courseId);
 
   const sessionIds = (sessionRows ?? []).map(s => s.id);

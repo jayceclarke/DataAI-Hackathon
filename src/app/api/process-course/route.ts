@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getSupabaseServerClient } from "@/lib/supabaseClient";
+import { getAuthUserAndSupabase } from "@/lib/supabase/server";
 import { extractConceptsAndLessons } from "@/lib/llm";
 
 const BodySchema = z.object({
@@ -9,11 +9,25 @@ const BodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const auth = await getAuthUserAndSupabase();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const { user, supabase } = auth;
+
   try {
     const json = await request.json();
     const parsed = BodySchema.parse(json);
 
-    const supabase = getSupabaseServerClient();
+    const { data: course } = await supabase
+      .from("courses")
+      .select("id")
+      .eq("id", parsed.course_id)
+      .eq("user_id", user.id)
+      .single();
+    if (!course) {
+      return NextResponse.json({ error: "Course not found" }, { status: 404 });
+    }
 
     let combinedText: string;
     if (parsed.source_document_id) {
@@ -158,7 +172,6 @@ export async function POST(request: Request) {
       }
     }
 
-    const userId = "demo-user";
     let totalConceptsToSet = conceptsCreated;
     if (parsed.source_document_id) {
       const { count } = await supabase
@@ -170,7 +183,7 @@ export async function POST(request: Request) {
 
     await supabase.from("user_course_progress").upsert(
       {
-        user_id: userId,
+        user_id: user.id,
         course_id: parsed.course_id,
         total_concepts: totalConceptsToSet
       },

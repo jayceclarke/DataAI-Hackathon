@@ -1,7 +1,7 @@
 import { unstable_noStore } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getSupabaseServerClient } from "@/lib/supabaseClient";
+import { getAuthUserAndSupabase } from "@/lib/supabase/server";
 import { recomputeCourseProgress } from "@/lib/progress";
 
 const ParamsSchema = z.object({
@@ -11,33 +11,27 @@ const ParamsSchema = z.object({
 export const dynamic = "force-dynamic";
 
 export async function GET(
-  request: Request,
+  _request: Request,
   context: { params: { courseId: string } }
 ) {
   unstable_noStore();
-  request.headers.get("x-requested-with");
+  const auth = await getAuthUserAndSupabase();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const { user, supabase } = auth;
+
   const parsed = ParamsSchema.safeParse(context.params);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid course id" }, { status: 400 });
   }
 
   try {
-    const supabase = getSupabaseServerClient();
-    const userId = "demo-user";
-
-    const { data: progress } = await supabase
-      .from("user_course_progress")
-      .select(
-        "concepts_completed, total_concepts, total_xp, current_streak, last_activity_date"
-      )
-      .eq("user_id", userId)
-      .eq("course_id", parsed.data.courseId)
-      .maybeSingle();
-
     const { data: course, error: courseError } = await supabase
       .from("courses")
       .select("title, course_code")
       .eq("id", parsed.data.courseId)
+      .eq("user_id", user.id)
       .single();
 
     if (courseError || !course) {
@@ -46,6 +40,15 @@ export async function GET(
         { status: 404 }
       );
     }
+
+    const { data: progress } = await supabase
+      .from("user_course_progress")
+      .select(
+        "concepts_completed, total_concepts, total_xp, current_streak, last_activity_date"
+      )
+      .eq("user_id", user.id)
+      .eq("course_id", parsed.data.courseId)
+      .maybeSingle();
 
     const { data: conceptsRows } = await supabase
       .from("concepts")
@@ -67,7 +70,7 @@ export async function GET(
     const { data: sessionRows } = await supabase
       .from("session_attempts")
       .select("id")
-      .eq("user_id", userId)
+      .eq("user_id", user.id)
       .eq("course_id", parsed.data.courseId);
 
     const sessionIds = (sessionRows ?? []).map(s => s.id);
@@ -137,7 +140,7 @@ export async function GET(
     const concepts = conceptList;
 
     const { conceptsCompleted, totalConcepts, totalXp } =
-      await recomputeCourseProgress(parsed.data.courseId);
+      await recomputeCourseProgress(parsed.data.courseId, user.id);
     const percentCaughtUp =
       totalConcepts > 0
         ? Math.round((conceptsCompleted / totalConcepts) * 100)

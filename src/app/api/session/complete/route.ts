@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getSupabaseServerClient } from "@/lib/supabaseClient";
+import { getAuthUserAndSupabase } from "@/lib/supabase/server";
 import { recomputeCourseProgress } from "@/lib/progress";
 
 const BodySchema = z.object({
@@ -8,6 +8,12 @@ const BodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const auth = await getAuthUserAndSupabase();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const { user, supabase } = auth;
+
   try {
     const json = await request.json();
     const parsed = BodySchema.safeParse(json);
@@ -15,9 +21,6 @@ export async function POST(request: Request) {
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid body" }, { status: 400 });
     }
-
-    const supabase = getSupabaseServerClient();
-    const userId = "demo-user";
 
     const { data: session, error: sessionError } = await supabase
       .from("session_attempts")
@@ -32,6 +35,9 @@ export async function POST(request: Request) {
         { error: "Session not found" },
         { status: 404 }
       );
+    }
+    if (session.user_id !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const { data: lessonAttempts, error: attemptsError } = await supabase
@@ -60,11 +66,11 @@ export async function POST(request: Request) {
       .eq("id", parsed.data.session_attempt_id);
 
     const { conceptsCompleted, totalConcepts, totalXp } =
-      await recomputeCourseProgress(session.course_id);
+      await recomputeCourseProgress(session.course_id, user.id);
 
     await supabase.from("user_course_progress").upsert(
       {
-        user_id: userId,
+        user_id: user.id,
         course_id: session.course_id,
         total_xp: totalXp,
         concepts_completed: conceptsCompleted,
@@ -78,7 +84,7 @@ export async function POST(request: Request) {
     const { data: streakRow } = await supabase
       .from("user_course_progress")
       .select("current_streak, last_activity_date")
-      .eq("user_id", userId)
+      .eq("user_id", user.id)
       .eq("course_id", session.course_id)
       .maybeSingle();
 
@@ -107,7 +113,7 @@ export async function POST(request: Request) {
         current_streak: currentStreak,
         last_activity_date: today
       })
-      .eq("user_id", userId)
+      .eq("user_id", user.id)
       .eq("course_id", session.course_id);
 
     return NextResponse.json({
