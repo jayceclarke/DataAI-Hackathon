@@ -1,0 +1,4 @@
+1. Make sure every page has a back arrow
+2. Make sure we can take in pdfs, videos, text... as inputs to create these practice
+3. Make sure we can output image, video, short text, large text, game, lecture clip... for each topic
+4. Make sure we have a 'game' home screen where users get progress and whatnot based on their achievements
