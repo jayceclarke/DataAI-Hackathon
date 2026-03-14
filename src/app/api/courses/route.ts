@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { supabaseBrowserClient } from "@/lib/supabaseClient";
+import { getSupabaseServerClient } from "@/lib/supabaseClient";
 
 const CreateCourseSchema = z.object({
   title: z.string().min(1).max(200),
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     const json = await request.json();
     const parsed = CreateCourseSchema.parse(json);
 
-    const supabase = supabaseBrowserClient();
+    const supabase = getSupabaseServerClient();
 
     const userId = "demo-user";
 

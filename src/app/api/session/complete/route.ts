@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { supabaseBrowserClient } from "@/lib/supabaseClient";
+import { getSupabaseServerClient } from "@/lib/supabaseClient";
+import { recomputeCourseProgress } from "@/lib/progress";
 
 const BodySchema = z.object({
-  lessonId: z.string().uuid(),
-  selectedIndex: z.number().int().min(0)
+  session_attempt_id: z.string().uuid()
 });
-
-const XP_PER_LESSON = 10;
 
 export async function POST(request: Request) {
   try {
@@ -18,63 +16,109 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid body" }, { status: 400 });
     }
 
-    const { lessonId, selectedIndex } = parsed.data;
-    const supabase = supabaseBrowserClient();
+    const supabase = getSupabaseServerClient();
     const userId = "demo-user";
 
-    const { data: lesson, error: lessonError } = await supabase
-      .from("lessons")
+    const { data: session, error: sessionError } = await supabase
+      .from("session_attempts")
       .select(
-        `
-        id,
-        quiz_question,
-        concepts!inner (
-          course_id
-        )
-      `
+        "id, user_id, course_id, started_at, completed_at, total_xp_earned"
       )
-      .eq("id", lessonId)
+      .eq("id", parsed.data.session_attempt_id)
       .single();
 
-    if (lessonError || !lesson) {
+    if (sessionError || !session) {
       return NextResponse.json(
-        { error: "Lesson not found" },
+        { error: "Session not found" },
         { status: 404 }
       );
     }
 
-    const quiz = lesson.quiz_question as {
-      correctIndex: number;
-    };
+    const { data: lessonAttempts, error: attemptsError } = await supabase
+      .from("lesson_attempts")
+      .select("xp_earned")
+      .eq("session_attempt_id", parsed.data.session_attempt_id);
 
-    const isCorrect = selectedIndex === quiz.correctIndex;
-    const xpEarned = isCorrect ? XP_PER_LESSON : 0;
-
-    await supabase.from("user_lessons").upsert(
-      {
-        user_id: userId,
-        lesson_id: lessonId,
-        completed: isCorrect,
-        correct_last_attempt: isCorrect,
-        xp_earned: xpEarned
-      },
-      { onConflict: "user_id,lesson_id" }
-    );
-
-    if (isCorrect) {
-      await supabase.rpc("increment_course_stats", {
-        p_user_id: userId,
-        p_course_id: lesson.concepts.course_id,
-        p_xp_delta: xpEarned
-      });
+    if (attemptsError || !lessonAttempts) {
+      return NextResponse.json(
+        { error: "Failed to load lesson attempts" },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json({ isCorrect, xpEarned });
+    const xpFromLessons = lessonAttempts.reduce(
+      (sum, attempt) => sum + (attempt.xp_earned as number),
+      0
+    );
+
+    await supabase
+      .from("session_attempts")
+      .update({
+        completed_at: new Date().toISOString(),
+        total_xp_earned: xpFromLessons
+      })
+      .eq("id", parsed.data.session_attempt_id);
+
+    const { conceptsCompleted, totalConcepts, totalXp } =
+      await recomputeCourseProgress(session.course_id);
+
+    await supabase.from("user_course_progress").upsert(
+      {
+        user_id: userId,
+        course_id: session.course_id,
+        total_xp: totalXp,
+        concepts_completed: conceptsCompleted,
+        total_concepts: totalConcepts
+      },
+      { onConflict: "user_id,course_id" }
+    );
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    const { data: streakRow } = await supabase
+      .from("user_course_progress")
+      .select("current_streak, last_activity_date")
+      .eq("user_id", userId)
+      .eq("course_id", session.course_id)
+      .maybeSingle();
+
+    let currentStreak = 1;
+    if (streakRow && streakRow.last_activity_date) {
+      const last = new Date(streakRow.last_activity_date as string);
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const isYesterday =
+        last.toISOString().slice(0, 10) ===
+        yesterday.toISOString().slice(0, 10);
+      const isToday = last.toISOString().slice(0, 10) === today;
+
+      if (isToday) {
+        currentStreak = streakRow.current_streak;
+      } else if (isYesterday) {
+        currentStreak = streakRow.current_streak + 1;
+      } else {
+        currentStreak = 1;
+      }
+    }
+
+    await supabase
+      .from("user_course_progress")
+      .update({
+        current_streak: currentStreak,
+        last_activity_date: today
+      })
+      .eq("user_id", userId)
+      .eq("course_id", session.course_id);
+
+    return NextResponse.json({
+      total_xp: xpFromLessons,
+      current_streak: currentStreak
+    });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error(error);
     return NextResponse.json(
-      { error: "Failed to complete lesson" },
+      { error: "Failed to complete session" },
       { status: 500 }
     );
   }

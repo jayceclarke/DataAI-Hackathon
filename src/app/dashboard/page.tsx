@@ -1,55 +1,89 @@
+"use client";
+
 import Link from "next/link";
-import { supabaseBrowserClient } from "@/lib/supabaseClient";
+import { usePathname } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { CourseCard } from "@/components/CourseCard";
 
-async function loadCourses() {
-  const supabase = supabaseBrowserClient();
-  const userId = "demo-user";
+type DashboardCourse = {
+  id: string;
+  title: string;
+  courseCode: string;
+  streak: number;
+  xp: number;
+  completed: number;
+  total: number;
+  percent: number;
+};
 
-  const { data, error } = await supabase
-    .from("courses")
-    .select(
-      `
-      id,
-      title,
-      course_code,
-      user_course_progress (
-        concepts_completed,
-        total_concepts,
-        total_xp,
-        current_streak
-      )
-    `
-    )
-    .eq("user_id", userId);
+export default function DashboardPage() {
+  const pathname = usePathname();
+  const [courses, setCourses] = useState<DashboardCourse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const loadingRef = useRef(false);
+  const loadIdRef = useRef(0);
 
-  if (error || !data) return [];
+  const loadCourses = useCallback(async (force = false) => {
+    if (!force && loadingRef.current) return;
+    loadingRef.current = true;
+    loadIdRef.current += 1;
+    const thisLoadId = loadIdRef.current;
+    setLoading(true);
+    setFetchError(null);
+    try {
+      const res = await fetch(`/api/dashboard?t=${Date.now()}`, {
+        cache: "no-store"
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        setFetchError(json?.error ?? "Couldn't load courses.");
+        setLoading(false);
+        loadingRef.current = false;
+        return;
+      }
+      const json = await res.json();
+      const list = Array.isArray(json.courses) ? json.courses : [];
+      if (thisLoadId === loadIdRef.current) {
+        setCourses(list);
+      }
+    } catch {
+      if (thisLoadId === loadIdRef.current) {
+        setFetchError("Couldn't load courses.");
+      }
+    } finally {
+      if (thisLoadId === loadIdRef.current) {
+        setLoading(false);
+      }
+      loadingRef.current = false;
+    }
+  }, []);
 
-  return data.map(row => {
-    const progress = (row as any).user_course_progress?.[0];
-    const completed = progress?.concepts_completed ?? 0;
-    const total = progress?.total_concepts ?? 0;
-    const percent =
-      total > 0 ? Math.round((completed / total) * 100) : 0;
+  const handleDeleted = useCallback((id: string) => {
+    setCourses(prev => prev.filter(c => c.id !== id));
+  }, []);
 
-    return {
-      id: row.id as string,
-      title: row.title as string,
-      courseCode: (row.course_code as string) ?? "",
-      streak: progress?.current_streak ?? 0,
-      xp: progress?.total_xp ?? 0,
-      completed,
-      total,
-      percent
+  // Refetch when we're on dashboard (e.g. after creating a course and navigating back)
+  useEffect(() => {
+    if (pathname === "/dashboard") {
+      loadCourses(true);
+    }
+  }, [loadCourses, pathname]);
+
+  // Refetch when user returns to this tab so new courses from other tabs or fresh DB show up
+  useEffect(() => {
+    const onFocus = () => {
+      if (pathname === "/dashboard") {
+        loadCourses(true);
+      }
     };
-  });
-}
-
-export default async function DashboardPage() {
-  const courses = await loadCourses();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [pathname, loadCourses]);
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-50">
             Your courses
@@ -59,65 +93,45 @@ export default async function DashboardPage() {
             session.
           </p>
         </div>
-        <Link
-          href="/courses/new"
-          className="inline-flex items-center justify-center rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-slate-950 shadow-lg shadow-brand-500/40 hover:bg-brand-400"
-        >
-          New course
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/courses/new"
+            className="inline-flex items-center justify-center rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-slate-950 shadow-lg shadow-brand-500/40 hover:bg-brand-400"
+          >
+            New course
+          </Link>
+        </div>
       </div>
 
-      {courses.length === 0 ? (
+      {fetchError && (
+        <div className="rounded-2xl border border-amber-500/50 bg-amber-500/10 p-4 text-sm text-amber-200 ring-1 ring-amber-500/30">
+          {fetchError}
+        </div>
+      )}
+      {loading ? (
         <div className="rounded-2xl bg-slate-950/70 p-4 text-sm text-slate-300 ring-1 ring-slate-800/80">
-          No courses yet. Create one to start turning missed lectures into
-          daily sessions.
+          Loading your courses…
+        </div>
+      ) : courses.length === 0 ? (
+        <div className="rounded-2xl bg-slate-950/70 p-4 text-sm text-slate-300 ring-1 ring-slate-800/80">
+          No courses yet. Create one to start turning missed lectures into daily
+          sessions.
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {courses.map(course => (
-            <div
+            <CourseCard
               key={course.id}
-              className="flex flex-col justify-between rounded-2xl bg-slate-950/70 p-4 ring-1 ring-slate-800/80"
-            >
-              <div className="space-y-1">
-                <h2 className="text-sm font-semibold text-slate-50">
-                  {course.title}
-                </h2>
-                {course.courseCode && (
-                  <p className="text-xs text-slate-400">
-                    {course.courseCode}
-                  </p>
-                )}
-                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
-                  <div
-                    className="h-full rounded-full bg-brand-500"
-                    style={{ width: `${course.percent}%` }}
-                  />
-                </div>
-                <p className="text-xs text-slate-400">
-                  {course.completed}/{course.total || "?"} concepts completed
-                  {course.total === 0 && " (generate lessons to start)"}
-                </p>
-              </div>
-
-              <div className="mt-3 flex items-center justify-between text-xs text-slate-300">
-                <div className="space-y-0.5">
-                  <p>
-                    <span className="font-semibold">{course.streak}</span> day
-                    streak
-                  </p>
-                  <p>
-                    <span className="font-semibold">{course.xp}</span> XP
-                  </p>
-                </div>
-                <Link
-                  href={`/courses/${course.id}/session`}
-                  className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-slate-950 shadow shadow-brand-500/40 hover:bg-brand-400"
-                >
-                  Start today's session
-                </Link>
-              </div>
-            </div>
+              id={course.id}
+              title={course.title}
+              courseCode={course.courseCode}
+              streak={course.streak}
+              xp={course.xp}
+              completed={course.completed}
+              total={course.total}
+              percent={course.percent}
+              onDeleted={handleDeleted}
+            />
           ))}
         </div>
       )}

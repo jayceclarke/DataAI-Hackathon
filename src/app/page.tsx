@@ -22,7 +22,7 @@ export default function LandingPage() {
         </p>
         <div className="flex flex-wrap gap-3">
           <Link
-            href="/upload"
+            href="/courses/new"
             className="inline-flex items-center justify-center rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-brand-500/40 transition hover:bg-brand-400"
           >
             Start with a course

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { supabaseBrowserClient } from "@/lib/supabaseClient";
+import { getSupabaseServerClient } from "@/lib/supabaseClient";
 
 const QuerySchema = z.object({
   courseId: z.string().uuid()
@@ -19,7 +19,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const supabase = supabaseBrowserClient();
+    const supabase = getSupabaseServerClient();
 
     // For hackathon simplicity we omit auth and use a demo user.
     const userId = "demo-user";

@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { supabaseBrowserClient } from "@/lib/supabaseClient";
+import { getSupabaseServerClient } from "@/lib/supabaseClient";
 
 const ParamsSchema = z.object({
   courseId: z.string().uuid()
 });
 
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: { courseId: string } }
 ) {
   const parsed = ParamsSchema.safeParse(context.params);
@@ -15,8 +15,11 @@ export async function GET(
     return NextResponse.json({ error: "Invalid course id" }, { status: 400 });
   }
 
+  const url = new URL(request.url);
+  const conceptId = url.searchParams.get("conceptId");
+
   try {
-    const supabase = supabaseBrowserClient();
+    const supabase = getSupabaseServerClient();
     const userId = "demo-user";
 
     const { data: course, error: courseError } = await supabase
@@ -34,7 +37,7 @@ export async function GET(
 
     const dailyGoal = course.daily_goal_minutes ?? 10;
 
-    const { data: rows, error: lessonsError } = await supabase
+    let query = supabase
       .from("lessons")
       .select(
         `
@@ -68,6 +71,12 @@ export async function GET(
       .eq("course_id", parsed.data.courseId)
       .order("order_index", { referencedTable: "concepts", ascending: true });
 
+    if (conceptId) {
+      query = query.eq("concept_id", conceptId);
+    }
+
+    const { data: rows, error: lessonsError } = await query;
+
     if (lessonsError || !rows) {
       return NextResponse.json(
         { error: "Failed to load lessons" },
@@ -83,18 +92,23 @@ export async function GET(
       return !attempts.some(a => a.is_correct);
     });
 
+    const source = conceptId ? rows : incomplete;
+
     const sessionLessons: any[] = [];
     let totalMinutes = 0;
     let totalXp = 0;
 
-    for (const row of incomplete) {
+    for (const row of source) {
       const minutes = (row as any).concepts.estimated_minutes ?? 3;
-      if (totalMinutes + minutes > dailyGoal && sessionLessons.length > 0) {
+      if (!conceptId && totalMinutes + minutes > dailyGoal && sessionLessons.length > 0) {
         break;
       }
       totalMinutes += minutes;
       totalXp += row.xp_reward;
       sessionLessons.push(row);
+      if (conceptId) {
+        break;
+      }
     }
 
     if (sessionLessons.length === 0 && rows.length > 0) {
