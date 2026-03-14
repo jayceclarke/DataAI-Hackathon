@@ -30,6 +30,7 @@ export default function SessionPage() {
   const searchParams = useSearchParams();
   const courseId = searchParams.get("courseId");
   const router = useRouter();
+  console.log("SessionPage render", { courseId });
 
   const [state, setState] = useState<{
     loading: boolean;
@@ -142,7 +143,7 @@ export default function SessionPage() {
     return (
       <div className="flex flex-1 items-center justify-center">
         <p className="text-sm text-slate-300">
-          Building today&apos;s session…
+          Building today's session…
         </p>
       </div>
     );
@@ -176,7 +177,7 @@ export default function SessionPage() {
       <div className="flex items-baseline justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-            Today&apos;s session
+            Today's session
           </p>
           <h1 className="text-xl font-semibold text-slate-50">
             {currentLesson.concepts.title}
@@ -214,16 +215,14 @@ export default function SessionPage() {
           <div className="grid gap-2">
             {currentLesson.quiz_question.options.map((option, index) => {
               const isSelected = selectedIndex === index;
-              const correctIndex = currentLesson.quiz_question.correctIndex;
-              const isCorrectOption = index === correctIndex;
               const disabled = hasAnswered;
 
               let optionClasses;
               if (hasAnswered) {
-                if (isCorrectOption) {
+                if (result.isCorrect && isSelected) {
                   optionClasses =
                     "border-emerald-400 bg-emerald-500/10 text-emerald-100";
-                } else if (isSelected) {
+                } else if (!result.isCorrect && isSelected) {
                   optionClasses =
                     "border-rose-400 bg-rose-500/10 text-rose-100";
                 } else {
@@ -263,7 +262,7 @@ export default function SessionPage() {
                 result.isCorrect ? "text-emerald-400" : "text-rose-400"
               }
             >
-              {result.isCorrect ? "Nice, that&apos;s right." : "Close, not quite."}
+              {result.isCorrect ? "Nice, that's right." : "Close, not quite."}
             </p>
             <p className="mt-1 text-slate-300">
               {currentLesson.quiz_answer_explanation}

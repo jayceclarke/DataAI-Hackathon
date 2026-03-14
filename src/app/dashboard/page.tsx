@@ -55,7 +55,7 @@ export default async function DashboardPage() {
             Your courses
           </h1>
           <p className="mt-1 text-sm text-slate-300">
-            See where you&apos;re behind and jump into a tiny catch-up
+            See where you're behind and jump into a tiny catch-up
             session.
           </p>
         </div>
@@ -114,7 +114,7 @@ export default async function DashboardPage() {
                   href={`/courses/${course.id}/session`}
                   className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-slate-950 shadow shadow-brand-500/40 hover:bg-brand-400"
                 >
-                  Start today&apos;s session
+                  Start today's session
                 </Link>
               </div>
             </div>

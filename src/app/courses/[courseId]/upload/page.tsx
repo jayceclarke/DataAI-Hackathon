@@ -75,7 +75,7 @@ export default function CourseUploadPage() {
           Upload materials
         </h1>
         <p className="mt-1 text-sm text-slate-300">
-          For the MVP, paste one lecture&apos;s notes or slides text. We&apos;ll
+          For the MVP, paste one lecture's notes or slides text. We'll
           turn it into concepts and micro-lessons.
         </p>
       </div>
@@ -107,7 +107,7 @@ export default function CourseUploadPage() {
             onChange={event => setPastedText(event.target.value)}
           />
           <p className="text-xs text-slate-500">
-            In a full version, you&apos;d upload PDFs here. For the hackathon
+            In a full version, you'd upload PDFs here. For the hackathon
             demo this keeps things simple and reliable.
           </p>
         </div>

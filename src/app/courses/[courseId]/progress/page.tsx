@@ -47,7 +47,7 @@ export default async function CourseProgressPage({
     return (
       <div className="flex flex-1 items-center justify-center">
         <p className="text-sm text-rose-400">
-          Couldn&apos;t load progress for this course.
+          Couldn't load progress for this course.
         </p>
       </div>
     );

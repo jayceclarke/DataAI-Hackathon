@@ -41,14 +41,14 @@ export default async function ConceptsPage({
           </h1>
           <p className="mt-1 text-sm text-slate-300">
             This is what the AI pulled out of your upload. Each concept is a
-            tiny lesson in today&apos;s session.
+            tiny lesson in today's session.
           </p>
         </div>
         <Link
           href={`/courses/${params.courseId}/session`}
           className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-slate-950 shadow-lg shadow-brand-500/40 hover:bg-brand-400"
         >
-          Start today&apos;s session
+          Start today's session
         </Link>
       </div>
 

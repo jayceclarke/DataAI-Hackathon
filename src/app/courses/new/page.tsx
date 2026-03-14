@@ -57,7 +57,7 @@ export default function NewCoursePage() {
           Create a course
         </h1>
         <p className="mt-1 text-sm text-slate-300">
-          Give CatchUp a container for your missed lectures. You&apos;ll upload
+          Give CatchUp a container for your missed lectures. You'll upload
           slides or notes next.
         </p>
       </div>
@@ -105,7 +105,7 @@ export default function NewCoursePage() {
             }
           />
           <p className="text-xs text-slate-500">
-            We&apos;ll build sessions that roughly fit this time.
+            We'll build sessions that roughly fit this time.
           </p>
         </div>
 
