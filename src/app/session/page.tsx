@@ -83,6 +83,9 @@ export default function SessionPage() {
   }, [courseId]);
 
   const currentLesson = state.lessons[activeIndex];
+  const isLastLesson =
+    state.lessons.length > 0 && activeIndex === state.lessons.length - 1;
+  const hasAnswered = result.isCorrect !== null;
 
   const handleSubmitAnswer = async () => {
     if (!currentLesson || selectedIndex == null) return;
@@ -158,7 +161,7 @@ export default function SessionPage() {
       <div className="flex flex-1 items-center justify-center">
         <div className="rounded-2xl bg-slate-950/70 px-6 py-5 text-center ring-1 ring-slate-800/80">
           <h1 className="text-lg font-semibold text-slate-50">
-            You&apos;re done for today.
+            You're done for today.
           </h1>
           <p className="mt-1 text-sm text-slate-300">
             Come back tomorrow for another tiny batch of concepts.
@@ -211,17 +214,40 @@ export default function SessionPage() {
           <div className="grid gap-2">
             {currentLesson.quiz_question.options.map((option, index) => {
               const isSelected = selectedIndex === index;
+              const correctIndex = currentLesson.quiz_question.correctIndex;
+              const isCorrectOption = index === correctIndex;
+              const disabled = hasAnswered;
+
+              let optionClasses;
+              if (hasAnswered) {
+                if (isCorrectOption) {
+                  optionClasses =
+                    "border-emerald-400 bg-emerald-500/10 text-emerald-100";
+                } else if (isSelected) {
+                  optionClasses =
+                    "border-rose-400 bg-rose-500/10 text-rose-100";
+                } else {
+                  optionClasses =
+                    "border-slate-800 bg-slate-900/60 text-slate-500";
+                }
+              } else if (isSelected) {
+                optionClasses =
+                  "border-brand-400 bg-brand-500/10 text-brand-100";
+              } else {
+                optionClasses =
+                  "border-slate-800 bg-slate-900/80 text-slate-100 hover:border-slate-700 hover:bg-slate-900";
+              }
 
               return (
                 <button
                   key={index}
                   type="button"
-                  onClick={() => setSelectedIndex(index)}
-                  className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition ${
-                    isSelected
-                      ? "border-brand-400 bg-brand-500/10 text-brand-100"
-                      : "border-slate-800 bg-slate-900/80 text-slate-100 hover:border-slate-700 hover:bg-slate-900"
-                  }`}
+                  onClick={() => {
+                    if (disabled) return;
+                    setSelectedIndex(index);
+                  }}
+                  disabled={disabled}
+                  className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition ${optionClasses}`}
                 >
                   {option}
                 </button>
@@ -254,8 +280,10 @@ export default function SessionPage() {
           <button
             type="button"
             onClick={handleSubmitAnswer}
-            disabled={selectedIndex == null}
-            className="inline-flex items-center justify-center rounded-lg bg-brand-500 px-4 py-2 text-xs font-semibold text-slate-950 shadow-lg shadow-brand-500/40 transition hover:bg-brand-400 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={selectedIndex == null || hasAnswered}
+            className={`inline-flex items-center justify-center rounded-lg bg-brand-500 px-4 py-2 text-xs font-semibold text-slate-950 shadow-lg shadow-brand-500/40 disabled:cursor-not-allowed disabled:opacity-60 ${
+              selectedIndex == null || hasAnswered ? "" : "hover:bg-brand-400"
+            }`}
           >
             Check answer
           </button>
@@ -274,7 +302,11 @@ export default function SessionPage() {
           <button
             type="button"
             onClick={handleExit}
-            className="text-xs font-medium text-slate-300 hover:text-slate-100"
+            className={`text-xs font-medium ${
+              result.isCorrect && isLastLesson
+                ? "rounded-lg bg-emerald-500 px-3 py-1.5 text-slate-950 shadow shadow-emerald-500/40 hover:bg-emerald-400"
+                : "text-slate-300 hover:text-slate-100"
+            }`}
           >
             Exit
           </button>

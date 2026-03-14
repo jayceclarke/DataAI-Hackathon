@@ -105,6 +105,10 @@ export default function CourseSessionPage() {
     state.data && state.data.lessons[activeIndex]
       ? state.data.lessons[activeIndex]
       : null;
+  const isLastLesson =
+    state.data && state.data.lessons.length > 0
+      ? activeIndex === state.data.lessons.length - 1
+      : false;
 
   const handleCheckAnswer = async () => {
     if (!state.data || !currentLesson || !selectedAnswer) return;
@@ -184,7 +188,11 @@ export default function CourseSessionPage() {
     }
   };
 
-  const handleExit = () => {
+  const handleExit = async () => {
+    if (result.correct && isLastLesson && !sessionComplete) {
+      await completeSession();
+    }
+
     router.push(`/courses/${courseId}/concepts`);
   };
 
@@ -319,16 +327,23 @@ export default function CourseSessionPage() {
                 if (!text) return null;
 
                 const selected = selectedAnswer === letter;
+                const disabled = result.correct === true;
 
                 return (
                   <button
                     key={letter}
                     type="button"
-                    onClick={() => setSelectedAnswer(letter)}
+                    onClick={() => {
+                      if (disabled) return;
+                      setSelectedAnswer(letter);
+                    }}
+                    disabled={disabled}
                     className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition ${
-                      selected
-                        ? "border-brand-400 bg-brand-500/10 text-brand-100"
-                        : "border-slate-800 bg-slate-900/80 text-slate-100 hover:border-slate-700 hover:bg-slate-900"
+                      disabled
+                        ? "cursor-default border-slate-800 bg-slate-900/60 text-slate-500"
+                        : selected
+                          ? "border-brand-400 bg-brand-500/10 text-brand-100"
+                          : "border-slate-800 bg-slate-900/80 text-slate-100 hover:border-slate-700 hover:bg-slate-900"
                     }`}
                   >
                     <span className="mr-2 font-semibold text-slate-400">
@@ -366,8 +381,12 @@ export default function CourseSessionPage() {
           <button
             type="button"
             onClick={handleCheckAnswer}
-            disabled={!selectedAnswer}
-            className="inline-flex items-center justify-center rounded-lg bg-brand-500 px-4 py-2 text-xs font-semibold text-slate-950 shadow-lg shadow-brand-500/40 transition hover:bg-brand-400 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={!selectedAnswer || result.correct === true}
+            className={`inline-flex items-center justify-center rounded-lg bg-brand-500 px-4 py-2 text-xs font-semibold text-slate-950 shadow-lg shadow-brand-500/40 disabled:cursor-not-allowed disabled:opacity-60 ${
+              !selectedAnswer || result.correct === true
+                ? ""
+                : "hover:bg-brand-400"
+            }`}
           >
             Check answer
           </button>
@@ -386,7 +405,11 @@ export default function CourseSessionPage() {
           <button
             type="button"
             onClick={handleExit}
-            className="text-xs font-medium text-slate-300 hover:text-slate-100"
+            className={`text-xs font-medium ${
+              result.correct && isLastLesson
+                ? "rounded-lg bg-emerald-500 px-3 py-1.5 text-slate-950 shadow shadow-emerald-500/40 hover:bg-emerald-400"
+                : "text-slate-300 hover:text-slate-100"
+            }`}
           >
             Exit
           </button>
