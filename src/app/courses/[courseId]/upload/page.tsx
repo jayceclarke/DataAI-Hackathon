@@ -111,6 +111,22 @@ export default function CourseUploadPage() {
         </p>
       </div>
 
+      {loading ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 rounded-2xl bg-slate-950/70 py-16 ring-1 ring-slate-800/80">
+          <div
+            className="h-10 w-10 animate-spin rounded-full border-2 border-slate-600 border-t-brand-400"
+            aria-hidden
+          />
+          <div className="text-center">
+            <p className="text-sm font-medium text-slate-200">
+              Uploading & generating concepts…
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              This usually takes 30–60 seconds. Don’t close this page.
+            </p>
+          </div>
+        </div>
+      ) : (
       <form
         onSubmit={handleSubmit}
         className="flex flex-1 flex-col gap-4 rounded-2xl bg-slate-950/70 p-4 ring-1 ring-slate-800/80"
@@ -178,17 +194,15 @@ export default function CourseUploadPage() {
         <div className="mt-2 flex items-center justify-between">
           <button
             type="submit"
-            disabled={loading}
-            className="inline-flex items-center justify-center rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-brand-500/40 transition hover:bg-brand-400 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center justify-center rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-brand-500/40 transition hover:bg-brand-400"
           >
-            {loading
-              ? "Generating lessons…"
-              : isSupplement
-                ? "Add lessons from this material"
-                : "Generate lessons from this file"}
+            {isSupplement
+              ? "Add lessons from this material"
+              : "Generate lessons from this file"}
           </button>
         </div>
       </form>
+      )}
     </div>
   );
 }
