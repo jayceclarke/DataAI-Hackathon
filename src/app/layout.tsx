@@ -4,7 +4,8 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "CatchUp | Duolingo-style AI for Classes",
   description:
-    "Duolingo-style AI system that turns class materials into short daily lessons so students can realistically catch up after falling behind."
+    "Duolingo-style AI system that turns class materials into short daily lessons so students can realistically catch up after falling behind.",
+  icons: { icon: "/favicon.ico" }
 };
 
 export default function RootLayout({

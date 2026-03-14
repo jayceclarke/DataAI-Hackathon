@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { supabaseBrowserClient } from "@/lib/supabaseClient";
+import { getSupabaseServerClient } from "@/lib/supabaseClient";
 
 const BodySchema = z.object({
   session_attempt_id: z.string().uuid(),
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid body" }, { status: 400 });
     }
 
-    const supabase = supabaseBrowserClient();
+    const supabase = getSupabaseServerClient();
 
     const { data: quiz, error: quizError } = await supabase
       .from("quiz_questions")

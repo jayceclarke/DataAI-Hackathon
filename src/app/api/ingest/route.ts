@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { supabaseBrowserClient } from "@/lib/supabaseClient";
+import { getSupabaseServerClient } from "@/lib/supabaseClient";
 import { extractConceptsAndLessons } from "@/lib/llm";
 
 const IngestBodySchema = z.object({
@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     const json = await request.json();
     const parsed = IngestBodySchema.parse(json);
 
-    const supabase = supabaseBrowserClient();
+    const supabase = getSupabaseServerClient();
 
     let courseId = parsed.courseId ?? null;
 

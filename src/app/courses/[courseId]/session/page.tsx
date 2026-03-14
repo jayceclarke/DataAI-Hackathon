@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 
 type SessionLesson = {
   id: string;
@@ -33,6 +33,8 @@ type TodaySessionResponse = {
 
 export default function CourseSessionPage() {
   const params = useParams<{ courseId: string }>();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const courseId = params.courseId;
 
   const [state, setState] = useState<{
@@ -60,15 +62,22 @@ export default function CourseSessionPage() {
   });
   const [xpTotal, setXpTotal] = useState(0);
   const [sessionComplete, setSessionComplete] = useState(false);
+  const [progressMeta, setProgressMeta] = useState<{
+    totalXp: number;
+    currentStreak: number;
+  } | null>(null);
 
   useEffect(() => {
     const fetchSession = async () => {
       setState({ loading: true, error: null, data: null });
 
       try {
-        const response = await fetch(
-          `/api/courses/${courseId}/today-session`
-        );
+        const conceptId = searchParams.get("conceptId");
+        const url = conceptId
+          ? `/api/courses/${courseId}/today-session?conceptId=${conceptId}`
+          : `/api/courses/${courseId}/today-session`;
+
+        const response = await fetch(url);
         const data: TodaySessionResponse = await response.json();
 
         if (!response.ok) {
@@ -97,8 +106,23 @@ export default function CourseSessionPage() {
       }
     };
 
+    const fetchProgress = async () => {
+      try {
+        const response = await fetch(`/api/progress/${courseId}`);
+        if (!response.ok) return;
+        const data = await response.json();
+        setProgressMeta({
+          totalXp: data.total_xp ?? 0,
+          currentStreak: data.current_streak ?? 0
+        });
+      } catch {
+        // ignore progress errors for now
+      }
+    };
+
     void fetchSession();
-  }, [courseId]);
+    void fetchProgress();
+  }, [courseId, searchParams]);
 
   const currentLesson =
     state.data && state.data.lessons[activeIndex]
@@ -217,6 +241,13 @@ export default function CourseSessionPage() {
             You earned <span className="font-semibold">{xpTotal}</span> XP
             today.
           </p>
+          <button
+            type="button"
+            onClick={() => router.push("/dashboard")}
+            className="mt-4 inline-flex items-center justify-center rounded-lg bg-brand-500 px-4 py-2 text-xs font-semibold text-slate-950 shadow-lg shadow-brand-500/40 hover:bg-brand-400"
+          >
+            Back to dashboard
+          </button>
         </div>
       </div>
     );
@@ -239,6 +270,19 @@ export default function CourseSessionPage() {
       ? ((activeIndex + 1) / state.data.lessons.length) * 100
       : 0) | 0;
 
+  const lessonsRemaining =
+    state.data.lessons.length - activeIndex > 0
+      ? state.data.lessons.length - activeIndex
+      : 0;
+  const avgMinutesPerLesson =
+    state.data.lessons.length > 0
+      ? state.data.total_estimated_minutes / state.data.lessons.length
+      : 0;
+  const minutesLeft = Math.max(
+    0,
+    Math.round(lessonsRemaining * avgMinutesPerLesson)
+  );
+
   return (
     <div className="mx-auto flex max-w-2xl flex-1 flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -255,6 +299,19 @@ export default function CourseSessionPage() {
             {xpTotal}/{state.data.total_xp} XP
           </p>
         </div>
+        {progressMeta && (
+          <div className="rounded-full bg-slate-900/80 px-3 py-1 text-right text-[11px] text-slate-300 ring-1 ring-slate-800/80">
+            <p>
+              <span className="font-semibold">
+                {progressMeta.currentStreak}
+              </span>{" "}
+              day streak
+            </p>
+            <p>
+              <span className="font-semibold">{progressMeta.totalXp}</span> XP
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
@@ -263,6 +320,11 @@ export default function CourseSessionPage() {
           style={{ width: `${progress}%` }}
         />
       </div>
+      {minutesLeft > 0 && (
+        <p className="text-[11px] text-slate-400">
+          ~{minutesLeft} min left in today&apos;s session.
+        </p>
+      )}
 
       <div className="flex flex-1 flex-col gap-4 rounded-2xl bg-slate-950/70 p-4 ring-1 ring-slate-800/80">
         <div className="space-y-1">
@@ -357,25 +419,31 @@ export default function CourseSessionPage() {
           </div>
         )}
 
-        <div className="mt-3 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={handleCheckAnswer}
-            disabled={!selectedAnswer}
-            className="inline-flex items-center justify-center rounded-lg bg-brand-500 px-4 py-2 text-xs font-semibold text-slate-950 shadow-lg shadow-brand-500/40 transition hover:bg-brand-400 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Check answer
-          </button>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[11px] text-slate-500">
+            Check your answer to save progress and mark this concept as done.
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleCheckAnswer}
+              disabled={!selectedAnswer}
+              className="inline-flex items-center justify-center rounded-lg bg-brand-500 px-4 py-2 text-xs font-semibold text-slate-950 shadow-lg shadow-brand-500/40 transition hover:bg-brand-400 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Check answer
+            </button>
 
-          <button
-            type="button"
-            onClick={handleNext}
-            className="text-xs font-medium text-brand-200 hover:text-brand-100"
-          >
-            {activeIndex < state.data.lessons.length - 1
-              ? "Next concept →"
-              : "Finish session"}
-          </button>
+            <button
+              type="button"
+              onClick={handleNext}
+              disabled={result.correct == null}
+              className="text-xs font-medium text-brand-200 hover:text-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {activeIndex < state.data.lessons.length - 1
+                ? "Next concept →"
+                : "Finish session"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

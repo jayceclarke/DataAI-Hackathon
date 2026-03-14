@@ -59,7 +59,7 @@ export default function CourseUploadPage() {
         return;
       }
 
-      router.push(`/courses/${courseId}/concepts`);
+      router.push(`/courses/${courseId}/progress`);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error(err);

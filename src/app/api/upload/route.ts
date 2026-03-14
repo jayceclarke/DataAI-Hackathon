@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { supabaseBrowserClient } from "@/lib/supabaseClient";
+import { getSupabaseServerClient } from "@/lib/supabaseClient";
 
 const BodySchema = z.object({
   course_id: z.string().uuid(),
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = supabaseBrowserClient();
+    const supabase = getSupabaseServerClient();
 
     const { data, error } = await supabase
       .from("source_documents")

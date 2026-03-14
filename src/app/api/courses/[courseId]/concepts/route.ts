@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { supabaseBrowserClient } from "@/lib/supabaseClient";
+import { getSupabaseServerClient } from "@/lib/supabaseClient";
 
 const ParamsSchema = z.object({
   courseId: z.string().uuid()
@@ -16,7 +16,7 @@ export async function GET(
   }
 
   try {
-    const supabase = supabaseBrowserClient();
+    const supabase = getSupabaseServerClient();
 
     const { data, error } = await supabase
       .from("concepts")

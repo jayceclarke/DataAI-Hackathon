@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { supabaseBrowserClient } from "@/lib/supabaseClient";
+import { getSupabaseServerClient } from "@/lib/supabaseClient";
+import { recomputeCourseProgress } from "@/lib/progress";
 
 const BodySchema = z.object({
   session_attempt_id: z.string().uuid()
@@ -15,12 +16,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid body" }, { status: 400 });
     }
 
-    const supabase = supabaseBrowserClient();
+    const supabase = getSupabaseServerClient();
     const userId = "demo-user";
 
     const { data: session, error: sessionError } = await supabase
       .from("session_attempts")
-      .select("id, user_id, course_id, started_at, completed_at, total_xp_earned")
+      .select(
+        "id, user_id, course_id, started_at, completed_at, total_xp_earned"
+      )
       .eq("id", parsed.data.session_attempt_id)
       .single();
 
@@ -48,21 +51,24 @@ export async function POST(request: Request) {
       0
     );
 
-    const totalXp = xpFromLessons;
-
     await supabase
       .from("session_attempts")
       .update({
         completed_at: new Date().toISOString(),
-        total_xp_earned: totalXp
+        total_xp_earned: xpFromLessons
       })
       .eq("id", parsed.data.session_attempt_id);
+
+    const { conceptsCompleted, totalConcepts, totalXp } =
+      await recomputeCourseProgress(session.course_id);
 
     await supabase.from("user_course_progress").upsert(
       {
         user_id: userId,
         course_id: session.course_id,
-        total_xp: totalXp
+        total_xp: totalXp,
+        concepts_completed: conceptsCompleted,
+        total_concepts: totalConcepts
       },
       { onConflict: "user_id,course_id" }
     );
@@ -84,8 +90,7 @@ export async function POST(request: Request) {
       const isYesterday =
         last.toISOString().slice(0, 10) ===
         yesterday.toISOString().slice(0, 10);
-      const isToday =
-        last.toISOString().slice(0, 10) === today;
+      const isToday = last.toISOString().slice(0, 10) === today;
 
       if (isToday) {
         currentStreak = streakRow.current_streak;
@@ -106,7 +111,7 @@ export async function POST(request: Request) {
       .eq("course_id", session.course_id);
 
     return NextResponse.json({
-      total_xp: totalXp,
+      total_xp: xpFromLessons,
       current_streak: currentStreak
     });
   } catch (error) {
@@ -114,88 +119,6 @@ export async function POST(request: Request) {
     console.error(error);
     return NextResponse.json(
       { error: "Failed to complete session" },
-      { status: 500 }
-    );
-  }
-}
-
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { supabaseBrowserClient } from "@/lib/supabaseClient";
-
-const BodySchema = z.object({
-  lessonId: z.string().uuid(),
-  selectedIndex: z.number().int().min(0)
-});
-
-const XP_PER_LESSON = 10;
-
-export async function POST(request: Request) {
-  try {
-    const json = await request.json();
-    const parsed = BodySchema.safeParse(json);
-
-    if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid body" }, { status: 400 });
-    }
-
-    const { lessonId, selectedIndex } = parsed.data;
-    const supabase = supabaseBrowserClient();
-    const userId = "demo-user";
-
-    const { data: lesson, error: lessonError } = await supabase
-      .from("lessons")
-      .select(
-        `
-        id,
-        quiz_question,
-        concepts!inner (
-          course_id
-        )
-      `
-      )
-      .eq("id", lessonId)
-      .single();
-
-    if (lessonError || !lesson) {
-      return NextResponse.json(
-        { error: "Lesson not found" },
-        { status: 404 }
-      );
-    }
-
-    const quiz = lesson.quiz_question as {
-      correctIndex: number;
-    };
-
-    const isCorrect = selectedIndex === quiz.correctIndex;
-    const xpEarned = isCorrect ? XP_PER_LESSON : 0;
-
-    await supabase.from("user_lessons").upsert(
-      {
-        user_id: userId,
-        lesson_id: lessonId,
-        completed: isCorrect,
-        correct_last_attempt: isCorrect,
-        xp_earned: xpEarned
-      },
-      { onConflict: "user_id,lesson_id" }
-    );
-
-    if (isCorrect) {
-      await supabase.rpc("increment_course_stats", {
-        p_user_id: userId,
-        p_course_id: lesson.concepts.course_id,
-        p_xp_delta: xpEarned
-      });
-    }
-
-    return NextResponse.json({ isCorrect, xpEarned });
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error(error);
-    return NextResponse.json(
-      { error: "Failed to complete lesson" },
       { status: 500 }
     );
   }
