@@ -113,9 +113,26 @@ export default function DashboardPage() {
           Loading your courses…
         </div>
       ) : courses.length === 0 ? (
-        <div className="rounded-2xl bg-slate-950/70 p-4 text-sm text-slate-300 ring-1 ring-slate-800/80">
-          No courses yet. Create one to start turning missed lectures into daily
-          sessions.
+        <div className="flex flex-1 flex-col items-center justify-center rounded-2xl bg-slate-950/70 p-8 text-center ring-1 ring-slate-800/80">
+          <h2 className="text-lg font-semibold text-slate-50">
+            No courses yet
+          </h2>
+          <p className="mt-2 max-w-sm text-sm text-slate-400">
+            Create your first course, upload slides or notes, and turn them into
+            bite-sized daily sessions so you can catch up without burning out.
+          </p>
+          <Link
+            href="/courses/new"
+            className="mt-6 inline-flex items-center justify-center rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-brand-500/40 hover:bg-brand-400"
+          >
+            Create your first course
+          </Link>
+          <Link
+            href="/"
+            className="mt-3 text-xs text-slate-500 hover:text-slate-400"
+          >
+            How it works
+          </Link>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">

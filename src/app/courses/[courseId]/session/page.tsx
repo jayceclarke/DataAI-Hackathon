@@ -66,6 +66,10 @@ export default function CourseSessionPage() {
     totalXp: number;
     currentStreak: number;
   } | null>(null);
+  const [completeMeta, setCompleteMeta] = useState<{
+    totalXp: number;
+    currentStreak: number;
+  } | null>(null);
 
   useEffect(() => {
     const fetchSession = async () => {
@@ -95,6 +99,7 @@ export default function CourseSessionPage() {
         setSelectedAnswer(null);
         setResult({ correct: null, xp: 0, explanation: null });
         setSessionComplete(false);
+        setCompleteMeta(null);
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error(error);
@@ -132,13 +137,6 @@ export default function CourseSessionPage() {
     state.data && state.data.lessons.length > 0
       ? activeIndex === state.data.lessons.length - 1
       : false;
-
-  // eslint-disable-next-line no-console
-  console.log("CourseSessionPage render", {
-    courseId,
-    activeIndex,
-    hasData: !!state.data
-  });
 
   const handleCheckAnswer = async () => {
     if (!state.data || !currentLesson || !selectedAnswer) return;
@@ -205,13 +203,20 @@ export default function CourseSessionPage() {
     if (!state.data) return;
 
     try {
-      await fetch("/api/session/finalize", {
+      const res = await fetch("/api/session/finalize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           session_attempt_id: state.data.session_attempt_id
         })
       });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && typeof data.current_streak === "number") {
+        setCompleteMeta({
+          totalXp: data.total_xp ?? 0,
+          currentStreak: data.current_streak
+        });
+      }
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(error);
@@ -247,26 +252,48 @@ export default function CourseSessionPage() {
   }
 
   if (sessionComplete) {
+    const streak = completeMeta?.currentStreak ?? progressMeta?.currentStreak ?? 0;
+    const totalXp = completeMeta?.totalXp ?? progressMeta?.totalXp ?? 0;
     return (
       <div className="flex flex-1 items-center justify-center">
-        <div className="rounded-2xl bg-slate-950/70 px-6 py-5 text-center ring-1 ring-slate-800/80">
+        <div className="rounded-2xl bg-slate-950/70 px-6 py-6 text-center ring-1 ring-slate-800/80 max-w-sm">
           <h1 className="text-lg font-semibold text-slate-50">
             Session complete
           </h1>
           <p className="mt-1 text-sm text-slate-300">
             Nice work—another small step toward being fully caught up.
           </p>
-          <p className="mt-3 text-sm text-emerald-400">
-            You earned <span className="font-semibold">{xpTotal}</span> XP
-            today.
-          </p>
-          <button
-            type="button"
-            onClick={() => router.push("/dashboard")}
-            className="mt-4 inline-flex items-center justify-center rounded-lg bg-brand-500 px-4 py-2 text-xs font-semibold text-slate-950 shadow-lg shadow-brand-500/40 hover:bg-brand-400"
-          >
-            Back to dashboard
-          </button>
+          <div className="mt-4 space-y-1">
+            <p className="text-sm text-emerald-400">
+              You earned <span className="font-semibold">{xpTotal}</span> XP today.
+            </p>
+            {streak > 0 && (
+              <p className="text-sm text-amber-300">
+                <span className="font-semibold">{streak}</span> day streak
+              </p>
+            )}
+            {totalXp > 0 && (
+              <p className="text-xs text-slate-400">
+                {totalXp} total XP in this course
+              </p>
+            )}
+          </div>
+          <div className="mt-5 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => router.push("/dashboard")}
+              className="inline-flex items-center justify-center rounded-lg bg-brand-500 px-4 py-2 text-xs font-semibold text-slate-950 shadow-lg shadow-brand-500/40 hover:bg-brand-400"
+            >
+              Back to dashboard
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push(`/courses/${courseId}/progress`)}
+              className="inline-flex items-center justify-center rounded-lg border border-slate-600 bg-slate-800/80 px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700/80"
+            >
+              View progress
+            </button>
+          </div>
         </div>
       </div>
     );

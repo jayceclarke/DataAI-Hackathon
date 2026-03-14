@@ -13,6 +13,7 @@ export default function CourseUploadPage() {
 
   const [pastedText, setPastedText] = useState("");
   const [filename, setFilename] = useState("Lecture notes");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -20,30 +21,47 @@ export default function CourseUploadPage() {
     event.preventDefault();
     setError(null);
 
-    if (!pastedText) {
-      setError("Paste some content from a lecture or syllabus.");
+    const useFile = selectedFile && selectedFile.size > 0;
+    if (!useFile && !pastedText.trim()) {
+      setError("Choose a PDF or paste your slides or notes.");
       return;
     }
 
     setLoading(true);
 
     try {
-      const uploadResponse = await fetch("/api/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          course_id: courseId,
-          filename,
-          pasted_text: pastedText
-        })
-      });
-
-      const uploadData = await uploadResponse.json();
-
-      if (!uploadResponse.ok) {
-        setError(uploadData.error ?? "Failed to upload material.");
-        setLoading(false);
-        return;
+      let uploadData: { source_document_id?: string; error?: string };
+      if (useFile) {
+        const formData = new FormData();
+        formData.set("course_id", courseId);
+        formData.set("filename", filename.trim() || selectedFile!.name);
+        formData.set("file", selectedFile!);
+        const uploadResponse = await fetch("/api/upload", {
+          method: "POST",
+          body: formData
+        });
+        uploadData = await uploadResponse.json();
+        if (!uploadResponse.ok) {
+          setError(uploadData.error ?? "Failed to upload PDF.");
+          setLoading(false);
+          return;
+        }
+      } else {
+        const uploadResponse = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            course_id: courseId,
+            filename: filename.trim() || "Pasted notes.txt",
+            pasted_text: pastedText
+          })
+        });
+        uploadData = await uploadResponse.json();
+        if (!uploadResponse.ok) {
+          setError(uploadData.error ?? "Failed to upload material.");
+          setLoading(false);
+          return;
+        }
       }
 
       const processResponse = await fetch("/api/process-course", {
@@ -84,12 +102,12 @@ export default function CourseUploadPage() {
           </Link>
         )}
         <h1 className="mt-1 text-2xl font-semibold text-slate-50">
-          {isSupplement ? "Add supplemental material" : "Upload materials"}
+          {isSupplement ? "Add more slides or notes" : "Upload slides or notes"}
         </h1>
         <p className="mt-1 text-sm text-slate-300">
           {isSupplement
-            ? "Paste more lecture notes or slides. New concepts will be added to this course."
-            : "For the MVP, paste one lecture's notes or slides text. We'll turn it into concepts and micro-lessons."}
+            ? "Upload another PDF and we'll add new concepts to this course."
+            : "Upload a PDF of your lecture slides or notes. We'll extract the text and generate bite-sized lessons you can study in a few minutes a day."}
         </p>
       </div>
 
@@ -99,7 +117,38 @@ export default function CourseUploadPage() {
       >
         <div className="space-y-1">
           <label className="text-xs font-medium text-slate-200">
-            Material label
+            Your file (PDF)
+          </label>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <label className="flex cursor-pointer items-center gap-2 rounded-lg border-2 border-dashed border-slate-600 bg-slate-800/50 px-4 py-4 text-sm text-slate-200 transition hover:border-brand-500/60 hover:bg-slate-800/80">
+              <input
+                type="file"
+                accept=".pdf,application/pdf"
+                className="hidden"
+                onChange={e => setSelectedFile(e.target.files?.[0] ?? null)}
+              />
+              <span className="font-medium">
+                {selectedFile ? selectedFile.name : "Choose slides or notes (PDF)"}
+              </span>
+            </label>
+            {selectedFile && (
+              <button
+                type="button"
+                onClick={() => setSelectedFile(null)}
+                className="text-xs text-slate-500 hover:text-slate-300"
+              >
+                Remove file
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-slate-500">
+            Lecture slides, study notes, or syllabus PDFs work. We pull out the text and turn it into short lessons.
+          </p>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-slate-200">
+            Label for this material
           </label>
           <input
             className="w-full rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
@@ -111,18 +160,15 @@ export default function CourseUploadPage() {
 
         <div className="space-y-1">
           <label className="text-xs font-medium text-slate-200">
-            Paste syllabus or lecture text
+            Or paste text instead
           </label>
           <textarea
-            className="h-56 w-full resize-none rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
-            placeholder="Paste the text from the PDF or slides here…"
+            className="h-32 w-full resize-none rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400 disabled:opacity-60"
+            placeholder="If you don't have a PDF, paste your slides or notes here…"
             value={pastedText}
             onChange={event => setPastedText(event.target.value)}
+            disabled={!!(selectedFile && selectedFile.size > 0)}
           />
-          <p className="text-xs text-slate-500">
-            In a full version, you'd upload PDFs here. For the hackathon
-            demo this keeps things simple and reliable.
-          </p>
         </div>
 
         {error && (
@@ -138,8 +184,8 @@ export default function CourseUploadPage() {
             {loading
               ? "Generating lessons…"
               : isSupplement
-                ? "Add concepts from this material"
-                : "Generate lessons"}
+                ? "Add lessons from this material"
+                : "Generate lessons from this file"}
           </button>
         </div>
       </form>
