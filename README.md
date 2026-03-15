@@ -101,9 +101,4 @@ Open `http://localhost:3000`.
      - Total XP and current streak
      - Quiz accuracy
 
-## Notes
-
-- Auth is intentionally skipped for the MVP; a fixed demo user id is used in API routes.
-- PDF upload is not wired yet for reliability—demo uses **pasted text** only.
-- The LLM is called server-side and expected to return strict JSON; if parsing fails, the app falls back to a heuristic paragraph-based splitter so the demo still works.
 # DataAI-Hackathon
